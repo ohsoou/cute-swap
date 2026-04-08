@@ -1,0 +1,69 @@
+# v0 sandbox internal files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.v0-trash/
+.vercel/
+next.user-config.*
+
+# Dependencies
+node_modules/
+.next/
+out/
+build/
+bun.lockb
+bun.lock
+.pnpm-store/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+
+# Editor/IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.tsbuildinfo
+.history/
+
+# OS specific
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# Gemini CLI
+.gemini/
+gemini-diagnostics.json
+# skills-lock.json is usually committed to lock skill versions, 
+# but if it contains local paths, uncomment the line below.
+# skills-lock.json
+
+# Claude Code & MCP
+.claude/
+.clerk/
+.mcp.json
+.taskmaster/
+
+# Next.js
+next-env.d.ts
+.next/
+dist/
