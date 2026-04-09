@@ -582,7 +582,27 @@
 
 ---
 
-## 7. 기술 스택 및 아키텍처
+## 7. 비기능 요구사항
+
+- **보안**: 모든 DB 쓰기 작업은 서버 API Route에서만 처리 (클라이언트 직접 쓰기 금지)
+- **성능**: Server Components 우선, 무한 스크롤 (12개씩 페이지네이션)
+- **이미지**: Supabase Storage 업로드, Next.js Image 컴포넌트로 최적화
+- **반응형**: 모바일 우선 디자인 (하단 네비게이션 바)
+- **접근성**: Radix UI 기반 접근성 준수
+
+---
+
+## 8. 제약 사항
+
+- 게시글당 채팅방 최대 3개
+- 게시글 이미지 최대 5장
+- 교환 원하는 태그 최대 10개
+- 설명 텍스트 최소 10자 / 최대 2,000자
+- 제목 최대 100자
+
+---
+
+## 9. 기술 스택 및 아키텍처
 
 ### 프론트엔드 (Next.js)
 
@@ -606,13 +626,24 @@
 
 ---
 
-## 8. 주요 기술 설계
+## 10. 주요 기술 설계
 
 ### 인증
 
-* Supabase Auth 사용
-* 이메일 기반 로그인/회원가입
-* 세션은 쿠키 기반으로 유지
+Clerk Webhook (user.created / user.updated)
+```
+Clerk Webhook (user.created / user.updated)
+    ↓
+/api/webhooks → Supabase profiles 테이블 upsert
+    ↓
+이후 모든 API는 Clerk 세션 토큰으로 userId 추출
+    ↓
+Supabase service_role 클라이언트로 DB 조작
+```
+
+* Clerk 기반 인증 (이메일, 소셜 로그인)
+* 세션은 Clerk 쿠키 기반으로 유지
+* 신규 가입 시 Webhook으로 Supabase profiles 자동 생성
 
 ### 채팅
 
@@ -638,7 +669,7 @@
 
 ---
 
-## 9. 보안 고려사항
+## 11. 보안 고려사항
 
 * RLS(Row Level Security) 필수
 * 작성자만 게시글 수정/삭제 가능
@@ -647,7 +678,7 @@
 
 ---
 
-## 10. 성능 고려사항
+## 12. 성능 고려사항
 
 * 목록 페이지: pagination 또는 infinite scroll
 * 이미지 lazy loading
@@ -656,7 +687,7 @@
 
 ---
 
-## 11. MVP 범위
+## 13. MVP 범위
 
 ### 포함
 
@@ -677,7 +708,7 @@
 
 ---
 
-## 12. 확장 방향
+## 14. 확장 방향
 
 * 판매 기능 추가
 * 자동 매칭 추천
