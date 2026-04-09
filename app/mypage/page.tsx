@@ -17,10 +17,10 @@ import {
   CheckCircle,
   ChevronRight,
   LogOut,
+  Info,
 } from "lucide-react";
 import { useClerk, useUser } from "@clerk/nextjs";
-import { getProfile, getUserPosts } from "@/lib/supabase/actions/profile";
-import { getFavorites } from "@/lib/supabase/actions/favorites";
+import { getProfile, getUserPosts, getChatStats } from "@/lib/supabase/actions/profile";
 import type { Profile } from "@/lib/supabase/types";
 
 type UserPost = Awaited<ReturnType<typeof getUserPosts>>[0];
@@ -30,33 +30,37 @@ export default function MyPage() {
   const { user: clerkUser } = useUser();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [myPosts, setMyPosts] = useState<UserPost[]>([]);
-  const [favoritesCount, setFavoritesCount] = useState(0);
+  const [activeChats, setActiveChats] = useState(0);
+  const [agreedTrades, setAgreedTrades] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!clerkUser) return;
 
     async function load() {
-      const [profileData, postsData, favsData] = await Promise.all([
+      const [profileData, postsData, chatStats] = await Promise.all([
         getProfile(clerkUser!.id),
         getUserPosts(clerkUser!.id),
-        getFavorites(),
+        getChatStats(clerkUser!.id),
       ]);
 
       setProfile(profileData);
       setMyPosts(postsData);
-      setFavoritesCount(favsData.length);
+      setActiveChats(chatStats.activeChats);
+      setAgreedTrades(chatStats.agreedTrades);
       setIsLoading(false);
     }
     load();
   }, [clerkUser]);
 
-  const handleLogout = () => {
-    signOut({ redirectUrl: '/login' });
+  const handleLogout = async () => {
+    await signOut({ redirectUrl: '/' });
   };
 
   const completedPosts = myPosts.filter((p) => p.status === "completed");
   const activePosts = myPosts.filter((p) => p.status !== "completed");
+  const displayedActivePosts = activePosts.slice(0, 5);
+  const displayedCompletedPosts = completedPosts.slice(0, 5);
 
   if (isLoading) {
     return (
@@ -120,16 +124,16 @@ export default function MyPage() {
           </Card>
           <Card className="border-[#F5DCC8] bg-white/80">
             <CardContent className="p-4 text-center">
-              <CheckCircle className="mx-auto mb-1 h-5 w-5 text-[#E8A87C]" />
-              <p className="text-lg font-bold text-[#5D4037]">{completedPosts.length}</p>
-              <p className="text-xs text-[#8D6E63]">{"완료"}</p>
+              <MessageCircle className="mx-auto mb-1 h-5 w-5 text-[#E8A87C]" />
+              <p className="text-lg font-bold text-[#5D4037]">{activeChats}</p>
+              <p className="text-xs text-[#8D6E63]">{"진행중 채팅"}</p>
             </CardContent>
           </Card>
           <Card className="border-[#F5DCC8] bg-white/80">
             <CardContent className="p-4 text-center">
-              <Heart className="mx-auto mb-1 h-5 w-5 text-[#E8A87C]" />
-              <p className="text-lg font-bold text-[#5D4037]">{favoritesCount}</p>
-              <p className="text-xs text-[#8D6E63]">{"찜"}</p>
+              <CheckCircle className="mx-auto mb-1 h-5 w-5 text-[#E8A87C]" />
+              <p className="text-lg font-bold text-[#5D4037]">{agreedTrades}</p>
+              <p className="text-xs text-[#8D6E63]">{"완료 교환"}</p>
             </CardContent>
           </Card>
         </div>
@@ -150,6 +154,13 @@ export default function MyPage() {
               <div className="flex items-center gap-3">
                 <Heart className="h-5 w-5 text-[#E8A87C]" />
                 <span className="text-[#5D4037]">{"찜 목록"}</span>
+              </div>
+              <ChevronRight className="h-5 w-5 text-[#8D6E63]" />
+            </Link>
+            <Link href="/about" className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <Info className="h-5 w-5 text-[#E8A87C]" />
+                <span className="text-[#5D4037]">{"서비스 소개"}</span>
               </div>
               <ChevronRight className="h-5 w-5 text-[#8D6E63]" />
             </Link>
@@ -177,10 +188,17 @@ export default function MyPage() {
 
           <TabsContent value="my-posts" className="mt-4">
             {activePosts.length === 0 ? (
-              <p className="py-8 text-center text-sm text-[#8D6E63]">{"작성한 교환글이 없습니다."}</p>
+              <div className="flex flex-col items-center py-8">
+                <p className="mb-3 text-sm text-[#8D6E63]">{"작성한 교환글이 없습니다."}</p>
+                <Link href="/posts/new">
+                  <Button size="sm" className="bg-[#E8A87C] text-white hover:bg-[#d49a6e]">
+                    {"첫 교환글 작성하기"}
+                  </Button>
+                </Link>
+              </div>
             ) : (
               <div className="space-y-3">
-                {activePosts.map((post) => (
+                {displayedActivePosts.map((post) => (
                   <Link key={post.id} href={`/posts/${post.id}`}>
                     <Card className="border-[#F5DCC8] bg-white">
                       <CardContent className="flex items-center gap-3 p-3">
@@ -196,7 +214,7 @@ export default function MyPage() {
                           <div className="mt-1 flex items-center gap-2">
                             <Badge className="bg-green-500 text-white">{"진행중"}</Badge>
                             <span className="text-xs text-[#8D6E63]">
-                              {`채팅 ${post.chat_count}/3`}
+                              {`채팅 ${post.chat_count}/${post.max_chat}`}
                             </span>
                           </div>
                         </div>
@@ -205,6 +223,11 @@ export default function MyPage() {
                     </Card>
                   </Link>
                 ))}
+                {activePosts.length > 5 && (
+                  <Link href="/posts" className="block text-center text-sm text-[#E8A87C] py-2 hover:underline">
+                    {"전체 보기 →"}
+                  </Link>
+                )}
               </div>
             )}
           </TabsContent>
@@ -214,7 +237,7 @@ export default function MyPage() {
               <p className="py-8 text-center text-sm text-[#8D6E63]">{"완료된 교환이 없습니다."}</p>
             ) : (
               <div className="space-y-3">
-                {completedPosts.map((post) => (
+                {displayedCompletedPosts.map((post) => (
                   <Link key={post.id} href={`/posts/${post.id}`}>
                     <Card className="border-[#F5DCC8] bg-white">
                       <CardContent className="flex items-center gap-3 p-3">
@@ -234,6 +257,11 @@ export default function MyPage() {
                     </Card>
                   </Link>
                 ))}
+                {completedPosts.length > 5 && (
+                  <Link href="/posts" className="block text-center text-sm text-[#E8A87C] py-2 hover:underline">
+                    {"전체 보기 →"}
+                  </Link>
+                )}
               </div>
             )}
           </TabsContent>

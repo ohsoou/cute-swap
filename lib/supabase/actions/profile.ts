@@ -57,9 +57,13 @@ export async function updateProfile(
   const bio = formData.get('bio') as string | null
   const avatarFile = formData.get('avatar') as File | null
 
-  const updates: { nickname: string; bio: string | null; avatar_url?: string } = {
+  const interestTagsRaw = formData.get('interest_tags') as string | null
+  const interestTags: string[] = interestTagsRaw ? JSON.parse(interestTagsRaw) : []
+
+  const updates: { nickname: string; bio: string | null; interest_tags: string[]; avatar_url?: string } = {
     nickname,
     bio: bio || null,
+    interest_tags: interestTags,
   }
 
   if (avatarFile && avatarFile.size > 0) {
@@ -87,6 +91,22 @@ export async function updateProfile(
 
   revalidatePath('/mypage')
   return {}
+}
+
+export async function getChatStats(userId: string): Promise<{ activeChats: number; agreedTrades: number }> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('chat_rooms')
+    .select('status')
+    .or(`requester_id.eq.${userId},owner_id.eq.${userId}`)
+
+  if (error || !data) return { activeChats: 0, agreedTrades: 0 }
+
+  return {
+    activeChats: data.filter((r) => r.status === 'active').length,
+    agreedTrades: data.filter((r) => r.status === 'agreed').length,
+  }
 }
 
 export async function getUserPosts(userId: string) {

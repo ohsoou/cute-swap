@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -9,43 +10,86 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
 import { ChevronLeft, Camera, Plus, X } from "lucide-react";
-
-const MOCK_USER = {
-  nickname: "마이멜로팬",
-  avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
-  bio: "산리오 덕후입니다! 주로 마이멜로디, 시나모롤 굿즈 수집해요 :)",
-  tags: ["산리오", "마이멜로디", "시나모롤"],
-};
+import { useUser } from "@clerk/nextjs";
+import { getProfile, updateProfile } from "@/lib/supabase/actions/profile";
 
 export default function EditProfilePage() {
-  const [formData, setFormData] = useState({
-    nickname: MOCK_USER.nickname,
-    bio: MOCK_USER.bio,
-    tags: MOCK_USER.tags,
-  });
+  const router = useRouter();
+  const { user: clerkUser } = useUser();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [nickname, setNickname] = useState("");
+  const [bio, setBio] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!clerkUser) return;
+    getProfile(clerkUser.id).then((profile) => {
+      if (profile) {
+        setNickname(profile.nickname);
+        setBio(profile.bio ?? "");
+        setTags(profile.interest_tags ?? []);
+        setAvatarUrl(profile.avatar_url ?? null);
+      }
+      setIsLoading(false);
+    });
+  }, [clerkUser]);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarFile(file);
+    setAvatarUrl(URL.createObjectURL(file));
+  };
 
   const handleAddTag = () => {
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-      setFormData({
-        ...formData,
-        tags: [...formData.tags, tagInput.trim()],
-      });
+    const trimmed = tagInput.trim();
+    if (trimmed && !tags.includes(trimmed)) {
+      setTags([...tags, trimmed]);
       setTagInput("");
     }
   };
 
   const handleRemoveTag = (tag: string) => {
-    setFormData({
-      ...formData,
-      tags: formData.tags.filter((t) => t !== tag),
-    });
+    setTags(tags.filter((t) => t !== tag));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Update profile:", formData);
+    setIsSaving(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.set("nickname", nickname);
+    formData.set("bio", bio);
+    formData.set("interest_tags", JSON.stringify(tags));
+    if (avatarFile) {
+      formData.set("avatar", avatarFile);
+    }
+
+    const result = await updateProfile(formData);
+    setIsSaving(false);
+
+    if (result.error) {
+      setError(result.error);
+    } else {
+      router.push("/mypage");
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FFF8F0]">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#E8A87C] border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FFF8F0] pb-24">
@@ -66,17 +110,25 @@ export default function EditProfilePage() {
         <div className="mb-8 flex flex-col items-center">
           <div className="relative">
             <Avatar className="h-24 w-24 border-4 border-white shadow-lg">
-              <AvatarImage src={MOCK_USER.avatar} />
+              <AvatarImage src={avatarUrl ?? undefined} />
               <AvatarFallback className="bg-[#FFB7C5] text-3xl text-white">
-                {formData.nickname[0]}
+                {nickname[0] ?? "?"}
               </AvatarFallback>
             </Avatar>
             <button
               type="button"
+              onClick={() => fileInputRef.current?.click()}
               className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-[#E8A87C] text-white shadow-md"
             >
               <Camera className="h-4 w-4" />
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
           </div>
           <p className="mt-2 text-sm text-[#8D6E63]">{"프로필 사진 변경"}</p>
         </div>
@@ -86,8 +138,8 @@ export default function EditProfilePage() {
           <Field>
             <FieldLabel className="text-[#5D4037]">{"닉네임"}</FieldLabel>
             <Input
-              value={formData.nickname}
-              onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
               className="border-[#F5DCC8] bg-white focus:border-[#E8A87C]"
               required
             />
@@ -97,8 +149,8 @@ export default function EditProfilePage() {
           <Field>
             <FieldLabel className="text-[#5D4037]">{"소개"}</FieldLabel>
             <Textarea
-              value={formData.bio}
-              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
               placeholder="자신을 소개해주세요"
               className="min-h-[100px] border-[#F5DCC8] bg-white focus:border-[#E8A87C]"
             />
@@ -112,7 +164,12 @@ export default function EditProfilePage() {
                 placeholder="태그 입력 후 추가"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddTag();
+                  }
+                }}
                 className="border-[#F5DCC8] bg-white focus:border-[#E8A87C]"
               />
               <Button
@@ -123,9 +180,9 @@ export default function EditProfilePage() {
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            {formData.tags.length > 0 && (
+            {tags.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
-                {formData.tags.map((tag) => (
+                {tags.map((tag) => (
                   <Badge
                     key={tag}
                     className="bg-gradient-to-r from-[#FFB7C5] to-[#E8A87C] text-white"
@@ -145,13 +202,18 @@ export default function EditProfilePage() {
           </Field>
         </FieldGroup>
 
+        {error && (
+          <p className="mt-4 text-center text-sm text-red-500">{error}</p>
+        )}
+
         {/* Submit */}
         <div className="fixed bottom-0 left-0 right-0 border-t border-[#F5DCC8] bg-white p-4">
           <Button
             type="submit"
-            className="w-full bg-gradient-to-r from-[#E8A87C] to-[#FFB7C5] text-white hover:opacity-90"
+            disabled={isSaving}
+            className="w-full bg-gradient-to-r from-[#E8A87C] to-[#FFB7C5] text-white hover:opacity-90 disabled:opacity-60"
           >
-            {"저장하기"}
+            {isSaving ? "저장 중..." : "저장하기"}
           </Button>
         </div>
       </form>
