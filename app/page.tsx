@@ -1,23 +1,38 @@
+import { auth } from "@clerk/nextjs/server"
+import { redirect } from "next/navigation"
+import { Suspense } from "react"
 import { Header } from "@/components/header"
-import { HeroSection } from "@/components/hero-section"
-import { CategorySection } from "@/components/category-section"
-import { PopularTagsSection } from "@/components/popular-tags-section"
-import { RecentItemsSection } from "@/components/recent-items-section"
-import { HowItWorksSection } from "@/components/how-it-works-section"
-import { CTASection } from "@/components/cta-section"
-import { Footer } from "@/components/footer"
+import HomeFeed from "./HomeFeed"
+import { Skeleton } from "@/components/ui/skeleton"
 
-export default function Home() {
+function HomeFeedSkeleton() {
+  return (
+    <div className="p-4 pb-24">
+      <div className="grid grid-cols-2 gap-4 pt-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="overflow-hidden rounded-xl border border-[#F5DCC8] bg-white">
+            <Skeleton className="aspect-square w-full rounded-none" />
+            <div className="space-y-2 p-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export default async function Home() {
+  const { userId } = await auth()
+  if (!userId) redirect("/about")
+
   return (
     <main className="min-h-screen pb-20">
       <Header />
-      <HeroSection />
-      <CategorySection />
-      <PopularTagsSection />
-      <RecentItemsSection />
-      <HowItWorksSection />
-      <CTASection />
-      <Footer />
+      <Suspense fallback={<HomeFeedSkeleton />}>
+        <HomeFeed />
+      </Suspense>
     </main>
   )
 }
