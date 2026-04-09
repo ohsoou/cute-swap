@@ -1,13 +1,15 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Search, Bell, User, Menu, LogIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useUser } from "@clerk/nextjs"
-import { useState } from "react"
+import { createClient } from "@/lib/supabase/client"
+import { getUnreadCount } from "@/lib/supabase/actions/notifications"
 
 const CATEGORY_LINKS = [
   { label: "피규어", value: "figure" },
@@ -19,8 +21,44 @@ const CATEGORY_LINKS = [
 export function Header() {
   const { user, isLoaded } = useUser()
   const router = useRouter()
+  const pathname = usePathname()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  // Fetch initial unread count + subscribe to realtime
+  useEffect(() => {
+    if (!isLoaded || !user) {
+      setUnreadCount(0)
+      return
+    }
+
+    getUnreadCount().then(setUnreadCount)
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`notifications:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => setUnreadCount((prev) => prev + 1)
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [isLoaded, user])
+
+  // Reset badge when visiting /notifications
+  useEffect(() => {
+    if (pathname === '/notifications') {
+      setUnreadCount(0)
+    }
+  }, [pathname])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,7 +77,7 @@ export function Header() {
               <span className="text-xl">🎀</span>
             </div>
             <span className="hidden text-xl font-bold text-[#5D4037] sm:block">
-              {"Kawaii Swap"}
+              {"Cute Swap"}
             </span>
           </Link>
 
@@ -77,9 +115,14 @@ export function Header() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full text-[#5D4037] hover:bg-[#FFB7C5]/20"
+                  className="relative rounded-full text-[#5D4037] hover:bg-[#FFB7C5]/20"
                 >
                   <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FFB7C5] px-1 text-[10px] font-bold text-white">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                   <span className="sr-only">{"알림"}</span>
                 </Button>
               </Link>
