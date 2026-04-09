@@ -26,6 +26,7 @@ import {
   MoreVertical,
   CheckCircle2,
   XCircle,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -53,6 +54,8 @@ export default function ChatRoomPage() {
   const [newMessage, setNewMessage] = useState("");
   const [roomStatus, setRoomStatus] = useState<"active" | "agreed" | "ended">("active");
   const [isPending, startTransition] = useTransition();
+  const [pendingImage, setPendingImage] = useState<{ file: File; preview: string } | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,19 +116,49 @@ export default function ChatRoomPage() {
     });
   };
 
-  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !room) return;
+    if (!file) return;
+    if (imageInputRef.current) imageInputRef.current.value = "";
+
+    const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
+    if (!ALLOWED.includes(file.type)) {
+      alert("jpg, png, webp 형식만 업로드 가능합니다.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert("5MB 이하의 파일만 업로드 가능합니다.");
+      return;
+    }
+
+    const preview = URL.createObjectURL(file);
+    setPendingImage({ file, preview });
+  };
+
+  const handleSendImage = async () => {
+    if (!pendingImage) return;
+    setIsUploadingImage(true);
 
     const supabase = createClient();
-    const ext = file.name.split(".").pop() ?? "jpg";
+    const ext = pendingImage.file.name.split(".").pop() ?? "jpg";
     const path = `chat/${roomId}/${Date.now()}.${ext}`;
 
-    const { error } = await supabase.storage.from("post-images").upload(path, file);
-    if (error) return;
+    const { error } = await supabase.storage.from("post-images").upload(path, pendingImage.file);
+    if (error) {
+      setIsUploadingImage(false);
+      return;
+    }
 
     const { data: { publicUrl } } = supabase.storage.from("post-images").getPublicUrl(path);
+    URL.revokeObjectURL(pendingImage.preview);
+    setPendingImage(null);
+    setIsUploadingImage(false);
     await sendMessage(roomId, publicUrl, "image");
+  };
+
+  const handleCancelImage = () => {
+    if (pendingImage) URL.revokeObjectURL(pendingImage.preview);
+    setPendingImage(null);
   };
 
   const handleAgree = () => {
@@ -326,7 +359,26 @@ export default function ChatRoomPage() {
       {/* Input */}
       {roomStatus === "active" ? (
         <div className="border-t border-[#F5DCC8] bg-white p-4">
-          <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+          <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageSelect} />
+          {pendingImage && (
+            <div className="mb-3 flex items-center gap-3 rounded-xl border border-[#F5DCC8] bg-[#FFF0E5] p-2">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg">
+                <Image src={pendingImage.preview} alt="Preview" fill className="object-cover" />
+              </div>
+              <div className="flex flex-1 gap-2">
+                <Button
+                  onClick={handleSendImage}
+                  disabled={isUploadingImage}
+                  className="flex-1 bg-gradient-to-r from-[#E8A87C] to-[#FFB7C5] text-white hover:opacity-90"
+                >
+                  {isUploadingImage ? "전송 중..." : "이미지 전송"}
+                </Button>
+                <Button variant="ghost" size="icon" onClick={handleCancelImage} className="text-[#8D6E63]">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"

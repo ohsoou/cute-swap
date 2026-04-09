@@ -9,13 +9,14 @@ export type ChatRoomWithDetails = {
   id: number
   status: 'active' | 'agreed' | 'ended'
   post_id: number
-  post_title: string
+  post_title: string | null
   post_image: string | null
   partner_id: string
   partner_nickname: string
   partner_avatar: string | null
   last_message: string | null
   last_message_at: string | null
+  unread_count: number
   created_at: string
 }
 
@@ -80,13 +81,15 @@ export async function createChatRoom(
   redirect(`/chat/${roomId}`)
 }
 
-export async function getChatRooms(): Promise<ChatRoomWithDetails[]> {
+export async function getChatRooms(
+  status?: 'active' | 'agreed' | 'ended'
+): Promise<ChatRoomWithDetails[]> {
   const supabase = createClient()
   const { userId } = await auth()
 
   if (!userId) return []
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('chat_rooms')
     .select(
       `
@@ -95,11 +98,17 @@ export async function getChatRooms(): Promise<ChatRoomWithDetails[]> {
       item_posts(title, post_images(url, display_order)),
       requester:profiles!chat_rooms_requester_id_fkey(nickname, avatar_url),
       owner:profiles!chat_rooms_owner_id_fkey(nickname, avatar_url),
-      chat_messages(content, created_at)
+      chat_messages(content, created_at, sender_id, is_read)
     `
     )
     .or(`requester_id.eq.${userId},owner_id.eq.${userId}`)
     .order('created_at', { ascending: false })
+
+  if (status) {
+    query = query.eq('status', status)
+  }
+
+  const { data, error } = await query
 
   if (error || !data) return []
 
@@ -113,22 +122,27 @@ export async function getChatRooms(): Promise<ChatRoomWithDetails[]> {
     )
 
     const messages = room.chat_messages ?? []
-    const lastMsg = messages.sort(
+    const lastMsg = [...messages].sort(
       (a: any, b: any) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )[0]
+
+    const unread_count = messages.filter(
+      (m: any) => m.sender_id !== userId && !m.is_read
+    ).length
 
     return {
       id: room.id,
       status: room.status,
       post_id: room.post_id,
-      post_title: room.item_posts?.title ?? '',
+      post_title: room.item_posts?.title ?? null,
       post_image: sortedImages[0]?.url ?? null,
       partner_id: isRequester ? room.owner_id : room.requester_id,
       partner_nickname: partner?.nickname ?? '알 수 없음',
       partner_avatar: partner?.avatar_url ?? null,
       last_message: lastMsg?.content ?? null,
       last_message_at: lastMsg?.created_at ?? null,
+      unread_count,
       created_at: room.created_at,
     }
   })
@@ -206,7 +220,7 @@ export async function getChatMessages(roomId: number) {
 
   const { data, error } = await supabase
     .from('chat_messages')
-    .select('id, room_id, sender_id, content, type, created_at')
+    .select('id, room_id, sender_id, content, type, is_read, created_at')
     .eq('room_id', roomId)
     .order('created_at', { ascending: true })
 
