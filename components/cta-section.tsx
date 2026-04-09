@@ -43,7 +43,7 @@ export function CTASection() {
           <Button 
             size="lg" 
             variant="outline" 
-            className="rounded-full border-white text-white hover:bg-white/10"
+            className="rounded-full border-white bg-transparent text-white hover:bg-white/10"
           >
             더 알아보기
           </Button>

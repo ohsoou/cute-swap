@@ -19,7 +19,7 @@ const cuteFont = Cute_Font({
 });
 
 export const metadata: Metadata = {
-  title: 'Kawaii Swap Market - 오타쿠 굿즈 교환',
+  title: 'Cute Swap - 오타쿠 굿즈 교환',
   description: '피규어, 문구류, CD 등 오타쿠 굿즈를 쉽게 교환하세요!',
   generator: 'v0.app',
   icons: {
@@ -49,7 +49,7 @@ export default async function RootLayout({
   const { userId } = await auth()
 
   return (
-    <ClerkProvider>
+    <ClerkProvider afterSignOutUrl="/">
       <html lang="en">
         <body className={`${nunito.variable} ${cuteFont.variable} font-sans antialiased`}>
           {children}

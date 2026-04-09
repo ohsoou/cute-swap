@@ -17,96 +17,49 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mfaCode, setMfaCode] = useState("");
-
   const isPending = fetchStatus === "fetching";
+
+  const finalize = async () => {
+    await signIn.finalize({
+      navigate: ({ decorateUrl }) => {
+        const url = decorateUrl("/");
+        if (url.startsWith("http")) {
+          window.location.href = url;
+        } else {
+          router.push(url);
+        }
+      },
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const { error } = await signIn.password({ emailAddress: email, password });
-
-    if (error) {
-      console.error(error);
-      return;
-    }
+    if (error) return;
 
     if (signIn.status === "complete") {
-      await signIn.finalize({
-        navigate: ({ decorateUrl }) => {
-          const url = decorateUrl("/");
-          if (url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.push(url);
-          }
-        },
-      });
+      await finalize();
+    } else if (signIn.status === "needs_client_trust") {
+      await signIn.mfa.sendEmailCode();
     }
   };
 
   const handleMFA = async (e: React.FormEvent) => {
     e.preventDefault();
-    await signIn.mfa.verifyPhoneCode({ code: mfaCode });
-
+    await signIn.mfa.verifyEmailCode({ code: mfaCode });
     if (signIn.status === "complete") {
-      await signIn.finalize({
-        navigate: ({ decorateUrl }) => {
-          const url = decorateUrl("/");
-          if (url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.push(url);
-          }
-        },
-      });
+      await finalize();
     }
   };
 
-  if (signIn.status === "needs_second_factor") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#FFF8F0] to-[#FFE8D6] px-4 py-12">
-        <Card className="w-full max-w-md border-[#F5DCC8] bg-white/80 shadow-xl backdrop-blur-sm">
-          <CardHeader className="space-y-4 text-center">
-            <CardTitle className="text-2xl font-bold text-[#5D4037]">{"2단계 인증"}</CardTitle>
-            <CardDescription className="text-[#8D6E63]">{"인증 코드를 입력하세요"}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleMFA} className="space-y-6">
-              <Field>
-                <FieldLabel className="text-[#5D4037]">{"인증 코드"}</FieldLabel>
-                <Input
-                  type="text"
-                  placeholder="123456"
-                  value={mfaCode}
-                  onChange={(e) => setMfaCode(e.target.value)}
-                  className="border-[#F5DCC8] bg-[#FFF8F0] focus:border-[#E8A87C]"
-                  required
-                />
-              </Field>
-              {errors?.global?.map((err, i) => (
-                <div key={i} className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{err.message}</div>
-              ))}
-              <Button
-                type="submit"
-                disabled={isPending}
-                className="w-full bg-gradient-to-r from-[#E8A87C] to-[#FFB7C5] text-white hover:opacity-90"
-              >
-                {isPending ? "확인 중..." : "확인"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#FFF8F0] to-[#FFE8D6] px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#FFF8F0] to-[#FFE8D6] px-4 py-20 overflow-y-auto">
       <Card className="w-full max-w-md border-[#F5DCC8] bg-white/80 shadow-xl backdrop-blur-sm">
         <CardHeader className="space-y-4 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#FFB7C5] to-[#E8A87C]">
             <Heart className="h-8 w-8 text-white" fill="white" />
           </div>
-          <CardTitle className="text-2xl font-bold text-[#5D4037]">{"Kawaii Swap"}</CardTitle>
+          <CardTitle className="text-2xl font-bold text-[#5D4037]">{"Cute Swap"}</CardTitle>
           <CardDescription className="text-[#8D6E63]">{"계정에 로그인하세요"}</CardDescription>
         </CardHeader>
         <CardContent>

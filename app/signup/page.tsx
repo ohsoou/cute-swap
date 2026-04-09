@@ -87,7 +87,7 @@ export default function SignupPage() {
 
   if (needsVerification) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#FFF8F0] to-[#FFE8D6] px-4 py-12">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#FFF8F0] to-[#FFE8D6] px-4 py-20 overflow-y-auto">
         <Card className="w-full max-w-md border-[#F5DCC8] bg-white/80 shadow-xl backdrop-blur-sm">
           <CardHeader className="space-y-4 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#FFB7C5] to-[#E8A87C]">
@@ -144,7 +144,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#FFF8F0] to-[#FFE8D6] px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#FFF8F0] to-[#FFE8D6] px-4 py-20 overflow-y-auto">
       <Card className="w-full max-w-md border-[#F5DCC8] bg-white/80 shadow-xl backdrop-blur-sm">
         <CardHeader className="space-y-4 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#FFB7C5] to-[#E8A87C]">
@@ -152,7 +152,7 @@ export default function SignupPage() {
           </div>
           <CardTitle className="text-2xl font-bold text-[#5D4037]">{"회원가입"}</CardTitle>
           <CardDescription className="text-[#8D6E63]">
-            {"Kawaii Swap에 가입하고 굿즈를 교환하세요!"}
+            {"Cute Swap에 가입하고 굿즈를 교환하세요!"}
           </CardDescription>
         </CardHeader>
         <CardContent>

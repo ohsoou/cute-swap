@@ -21,7 +21,7 @@ export function Footer() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFB7C5]">
                 <span className="text-xl">🎀</span>
               </div>
-              <span className="text-xl font-bold">Kawaii Swap</span>
+              <span className="text-xl font-bold">Cute Swap</span>
             </Link>
             <p className="text-sm text-white/70">
               오타쿠를 위한 귀여운 굿즈 교환 플랫폼. 
@@ -35,34 +35,34 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-white/70">
               <li><Link href="/posts/new" className="hover:text-[#FFB7C5] transition-colors">교환글 올리기</Link></li>
               <li><Link href="/posts" className="hover:text-[#FFB7C5] transition-colors">교환글 둘러보기</Link></li>
-              <li><Link href="#tags" className="hover:text-[#FFB7C5] transition-colors">인기 태그</Link></li>
-              <li><Link href="#categories" className="hover:text-[#FFB7C5] transition-colors">카테고리</Link></li>
+              {/* <li><Link href="#tags" className="hover:text-[#FFB7C5] transition-colors">인기 태그</Link></li> */}
+              {/* <li><Link href="#categories" className="hover:text-[#FFB7C5] transition-colors">카테고리</Link></li> */}
             </ul>
           </div>
 
           <div>
             <h3 className="mb-4 font-semibold">고객지원</h3>
             <ul className="space-y-2 text-sm text-white/70">
-              <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">자주 묻는 질문</Link></li>
-              <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">공지사항</Link></li>
-              <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">1:1 문의</Link></li>
-              <li><Link href="/report" className="hover:text-[#FFB7C5] transition-colors">신고하기</Link></li>
+              {/* <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">자주 묻는 질문</Link></li> */}
+              {/* <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">공지사항</Link></li> */}
+              {/* <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">1:1 문의</Link></li> */}
+              {/* <li><Link href="/report" className="hover:text-[#FFB7C5] transition-colors">신고하기</Link></li> */}
             </ul>
           </div>
 
           <div>
             <h3 className="mb-4 font-semibold">회사</h3>
             <ul className="space-y-2 text-sm text-white/70">
-              <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">서비스 소개</Link></li>
-              <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">이용약관</Link></li>
-              <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">개인정보처리방침</Link></li>
-              <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">운영정책</Link></li>
+              {/* <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">서비스 소개</Link></li> */}
+              {/* <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">이용약관</Link></li> */}
+              {/* <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">개인정보처리방침</Link></li> */}
+              {/* <li><Link href="#" className="hover:text-[#FFB7C5] transition-colors">운영정책</Link></li> */}
             </ul>
           </div>
         </div>
 
         <div className="mt-12 border-t border-white/10 pt-8 text-center text-sm text-white/50">
-          <p>© 2026 Kawaii Swap Market. All rights reserved.</p>
+          <p>© 2026 Cute Swap. All rights reserved.</p>
         </div>
       </div>
     </footer>

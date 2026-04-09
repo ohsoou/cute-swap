@@ -61,52 +61,48 @@ export default function FavoritesPage() {
           <div className="space-y-4">
             {favorites.map((fav) => (
               <Card key={fav.id} className="overflow-hidden border-[#F5DCC8] bg-white">
-                <CardContent className="p-0">
-                  <div className="flex">
-                    <Link href={`/posts/${fav.post_id}`} className="shrink-0">
-                      <div className="relative h-28 w-28">
-                        {fav.post.image ? (
-                          <Image src={fav.post.image} alt={fav.post.title ?? ""} fill className="object-cover" />
-                        ) : (
-                          <div className="h-full w-full bg-[#F5DCC8]" />
-                        )}
-                        {(fav.post.chat_count ?? 0) >= (fav.post.max_chat ?? 3) && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                            <span className="rounded-full bg-[#FFB7C5] px-2 py-0.5 text-xs text-white">
-                              {"마감"}
-                            </span>
-                          </div>
-                        )}
+                <CardContent className="flex p-0">
+                  <Link href={`/posts/${fav.post_id}`} className="relative w-28 shrink-0 self-stretch">
+                    {fav.post.image ? (
+                      <Image src={fav.post.image} alt={fav.post.title ?? ""} fill className="object-cover" />
+                    ) : (
+                      <div className="h-full w-full bg-[#F5DCC8]" />
+                    )}
+                    {(fav.post.chat_count ?? 0) >= (fav.post.max_chat ?? 3) && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                        <span className="rounded-full bg-[#FFB7C5] px-2 py-0.5 text-xs text-white">
+                          {"마감"}
+                        </span>
                       </div>
-                    </Link>
-                    <div className="flex flex-1 flex-col justify-between p-3">
-                      <div>
-                        <div className="mb-1 flex items-center gap-2">
-                          <Badge className="bg-[#E8A87C] text-xs text-white">
-                            {fav.post.category}
-                          </Badge>
-                        </div>
-                        <Link href={`/posts/${fav.post_id}`}>
-                          <h3 className="line-clamp-2 font-medium text-[#5D4037]">
-                            {fav.post.title}
-                          </h3>
-                        </Link>
-                        <p className="mt-1 text-xs text-[#8D6E63]">{fav.post.author_nickname}</p>
+                    )}
+                  </Link>
+                  <div className="flex min-h-[7rem] flex-1 flex-col justify-between p-3">
+                    <div>
+                      <div className="mb-1 flex items-center gap-2">
+                        <Badge className="bg-[#E8A87C] text-xs text-white">
+                          {fav.post.category}
+                        </Badge>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1 text-xs text-[#8D6E63]">
-                          <MessageCircle className="h-3 w-3" />
-                          <span>{`${fav.post.chat_count}/${fav.post.max_chat}`}</span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeFavorite(fav.post_id)}
-                          className="h-8 w-8 text-red-400 hover:text-red-500"
-                        >
-                          <Heart className="h-5 w-5" fill="currentColor" />
-                        </Button>
+                      <Link href={`/posts/${fav.post_id}`}>
+                        <h3 className="line-clamp-2 font-medium text-[#5D4037]">
+                          {fav.post.title}
+                        </h3>
+                      </Link>
+                      <p className="mt-1 text-xs text-[#8D6E63]">{fav.post.author_nickname}</p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 text-xs text-[#8D6E63]">
+                        <MessageCircle className="h-3 w-3" />
+                        <span>{`${fav.post.chat_count}/${fav.post.max_chat}`}</span>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeFavorite(fav.post_id)}
+                        className="h-8 w-8 text-red-400 hover:text-red-500"
+                      >
+                        <Heart className="h-5 w-5" fill="currentColor" />
+                      </Button>
                     </div>
                   </div>
                 </CardContent>

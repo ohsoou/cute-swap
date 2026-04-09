@@ -29,6 +29,11 @@ export function BottomNavigation({ userId }: BottomNavigationProps) {
     return null;
   }
 
+  // Hide on edit pages (they have their own sticky action bar)
+  if (pathname === "/mypage/edit" || pathname.match(/^\/posts\/\d+\/edit$/)) {
+    return null;
+  }
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#F5DCC8] bg-white/95 backdrop-blur-sm">
       <div className="flex items-center justify-around">
