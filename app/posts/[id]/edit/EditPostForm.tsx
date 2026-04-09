@@ -3,55 +3,58 @@
 import { useState, useRef, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, Plus, X, ImageIcon } from "lucide-react";
-import { createPost } from "@/lib/supabase/actions/posts";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { ChevronLeft, Plus, X, ImageIcon, Trash2 } from "lucide-react";
+import { updatePost, deletePost, type PostWithDetails } from "@/lib/supabase/actions/posts";
 import { createClient } from "@/lib/supabase/client";
 
-const postSchema = z.object({
-  title: z.string().min(1, "제목을 입력해주세요").max(100, "제목은 100자 이내로 입력해주세요"),
-  category: z.string().min(1, "카테고리를 선택해주세요"),
-  condition: z.string().min(1, "상품 상태를 선택해주세요"),
-  description: z
-    .string()
-    .min(10, "설명은 10자 이상 입력해주세요")
-    .max(2000, "설명은 2000자 이내로 입력해주세요"),
-  wantTags: z
-    .array(z.string())
-    .min(1, "교환 태그를 1개 이상 추가해주세요")
-    .max(10, "태그는 최대 10개까지 추가 가능합니다"),
-  imageCount: z
-    .number()
-    .min(1, "사진을 1장 이상 추가해주세요")
-    .max(5, "사진은 최대 5장까지 추가 가능합니다"),
-});
+interface EditPostFormProps {
+  post: PostWithDetails;
+}
 
-type FieldErrors = Partial<Record<keyof z.infer<typeof postSchema>, string>>;
+export default function EditPostForm({ post }: EditPostFormProps) {
+  const router = useRouter();
+  const postId = String(post.id);
 
-export default function NewPostPage() {
   const [formData, setFormData] = useState({
-    title: "",
-    category: "",
-    condition: "new",
-    description: "",
-    wantTags: [] as string[],
+    title: post.title,
+    category: post.category,
+    condition: post.condition,
+    description: post.description,
+    wantTags: post.want_tags,
   });
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>(
+    post.post_images.map((img) => img.url)
+  );
+  const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
+  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tagDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isComposingRef = useRef(false);
+
+  const totalImages = existingImages.length + newImagePreviews.length;
 
   const handleTagInput = (value: string) => {
     setTagInput(value);
@@ -90,7 +93,7 @@ export default function NewPostPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    const remaining = 5 - imageFiles.length;
+    const remaining = 5 - totalImages;
     const toAdd = files.slice(0, remaining);
     const valid: File[] = [];
     for (const f of toAdd) {
@@ -104,35 +107,24 @@ export default function NewPostPage() {
       }
       valid.push(f);
     }
-    setImageFiles((prev) => [...prev, ...valid]);
-    setImagePreviews((prev) => [...prev, ...valid.map((f) => URL.createObjectURL(f))]);
+    setNewImageFiles((prev) => [...prev, ...valid]);
+    setNewImagePreviews((prev) => [...prev, ...valid.map((f) => URL.createObjectURL(f))]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleRemoveImage = (index: number) => {
-    URL.revokeObjectURL(imagePreviews[index]);
-    setImageFiles((prev) => prev.filter((_, i) => i !== index));
-    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveExistingImage = (url: string) => {
+    setExistingImages((prev) => prev.filter((u) => u !== url));
+  };
+
+  const handleRemoveNewImage = (index: number) => {
+    URL.revokeObjectURL(newImagePreviews[index]);
+    setNewImageFiles((prev) => prev.filter((_, i) => i !== index));
+    setNewImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    const parsed = postSchema.safeParse({
-      ...formData,
-      imageCount: imageFiles.length,
-    });
-
-    if (!parsed.success) {
-      const errors: FieldErrors = {};
-      for (const issue of parsed.error.issues) {
-        const key = issue.path[0] as keyof FieldErrors;
-        if (!errors[key]) errors[key] = issue.message;
-      }
-      setFieldErrors(errors);
-      return;
-    }
-    setFieldErrors({});
+    setError(null);
 
     const fd = new FormData();
     fd.set("title", formData.title);
@@ -140,30 +132,63 @@ export default function NewPostPage() {
     fd.set("condition", formData.condition);
     fd.set("description", formData.description);
     fd.set("wantTags", formData.wantTags.join(","));
-    imageFiles.forEach((file) => fd.append("images", file));
+    fd.set("keepImages", existingImages.join(","));
+    newImageFiles.forEach((file) => fd.append("images", file));
 
     startTransition(async () => {
-      const result = await createPost(fd);
+      const result = await updatePost(postId, fd);
+      if (result?.error) {
+        setError(result.error);
+      } else {
+        router.push(`/posts/${postId}`);
+      }
+    });
+  };
+
+  const handleDelete = () => {
+    startTransition(async () => {
+      const result = await deletePost(postId);
       if (result?.error) {
         toast.error(result.error);
       }
-      // On success, createPost redirects — we never reach here
+      // On success, deletePost redirects — we never reach here
     });
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF8F0] pb-36">
+    <div className="min-h-screen bg-[#FFF8F0] pb-24">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-[#F5DCC8] bg-white/80 backdrop-blur-sm">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <Link href="/posts">
+            <Link href={`/posts/${postId}`}>
               <Button variant="ghost" size="icon" className="text-[#5D4037]">
                 <ChevronLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <h1 className="text-lg font-bold text-[#5D4037]">{"교환글 작성"}</h1>
+            <h1 className="text-lg font-bold text-[#5D4037]">{"교환글 수정"}</h1>
           </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-red-500" disabled={isPending}>
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{"게시글 삭제"}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {"정말로 이 게시글을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{"취소"}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
+                  {"삭제"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </header>
 
@@ -180,22 +205,34 @@ export default function NewPostPage() {
             onChange={handleFileChange}
           />
           <div className="flex gap-3 overflow-x-auto pb-2">
-            {imageFiles.length < 5 && (
+            {totalImages < 5 && (
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="flex h-24 w-24 shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#E8A87C] bg-[#FFF0E5] text-[#E8A87C] transition-colors hover:bg-[#FFE8D6]"
               >
                 <ImageIcon className="h-6 w-6" />
-                <span className="mt-1 text-xs">{`${imageFiles.length}/5`}</span>
+                <span className="mt-1 text-xs">{`${totalImages}/5`}</span>
               </button>
             )}
-            {imagePreviews.map((preview, index) => (
-              <div key={index} className="relative h-24 w-24 shrink-0">
-                <Image src={preview} alt={`Upload ${index + 1}`} fill className="rounded-xl object-cover" />
+            {existingImages.map((url, index) => (
+              <div key={`existing-${index}`} className="relative h-24 w-24 shrink-0">
+                <Image src={url} alt={`Image ${index + 1}`} fill className="rounded-xl object-cover" />
                 <button
                   type="button"
-                  onClick={() => handleRemoveImage(index)}
+                  onClick={() => handleRemoveExistingImage(url)}
+                  className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+            {newImagePreviews.map((preview, index) => (
+              <div key={`new-${index}`} className="relative h-24 w-24 shrink-0">
+                <Image src={preview} alt={`New ${index + 1}`} fill className="rounded-xl object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveNewImage(index)}
                   className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white"
                 >
                   <X className="h-3 w-3" />
@@ -203,9 +240,6 @@ export default function NewPostPage() {
               </div>
             ))}
           </div>
-          {fieldErrors.imageCount && (
-            <p className="mt-1 text-sm text-red-500">{fieldErrors.imageCount}</p>
-          )}
         </div>
 
         <FieldGroup className="space-y-4">
@@ -216,18 +250,13 @@ export default function NewPostPage() {
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="border-[#F5DCC8] bg-white focus:border-[#E8A87C]"
+              required
             />
-            {fieldErrors.title && (
-              <p className="text-sm text-red-500">{fieldErrors.title}</p>
-            )}
           </Field>
 
           <Field>
             <FieldLabel className="text-[#5D4037]">{"카테고리"}</FieldLabel>
-            <Select
-              value={formData.category}
-              onValueChange={(value) => setFormData({ ...formData, category: value })}
-            >
+            <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
               <SelectTrigger className="border-[#F5DCC8] bg-white">
                 <SelectValue placeholder="카테고리를 선택하세요" />
               </SelectTrigger>
@@ -238,17 +267,11 @@ export default function NewPostPage() {
                 <SelectItem value="기타굿즈">{"기타굿즈"}</SelectItem>
               </SelectContent>
             </Select>
-            {fieldErrors.category && (
-              <p className="text-sm text-red-500">{fieldErrors.category}</p>
-            )}
           </Field>
 
           <Field>
             <FieldLabel className="text-[#5D4037]">{"상품 상태"}</FieldLabel>
-            <Select
-              value={formData.condition}
-              onValueChange={(value) => setFormData({ ...formData, condition: value })}
-            >
+            <Select value={formData.condition} onValueChange={(value) => setFormData({ ...formData, condition: value })}>
               <SelectTrigger className="border-[#F5DCC8] bg-white">
                 <SelectValue placeholder="상태를 선택하세요" />
               </SelectTrigger>
@@ -259,9 +282,6 @@ export default function NewPostPage() {
                 <SelectItem value="used">{"사용감 있음"}</SelectItem>
               </SelectContent>
             </Select>
-            {fieldErrors.condition && (
-              <p className="text-sm text-red-500">{fieldErrors.condition}</p>
-            )}
           </Field>
 
           <Field>
@@ -271,10 +291,8 @@ export default function NewPostPage() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="min-h-[120px] border-[#F5DCC8] bg-white focus:border-[#E8A87C]"
+              required
             />
-            {fieldErrors.description && (
-              <p className="text-sm text-red-500">{fieldErrors.description}</p>
-            )}
           </Field>
 
           <Field>
@@ -323,35 +341,29 @@ export default function NewPostPage() {
             {formData.wantTags.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {formData.wantTags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    className="bg-gradient-to-r from-[#FFB7C5] to-[#E8A87C] text-white"
-                  >
+                  <Badge key={tag} className="bg-gradient-to-r from-[#FFB7C5] to-[#E8A87C] text-white">
                     {tag}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTag(tag)}
-                      className="ml-1 hover:text-red-200"
-                    >
+                    <button type="button" onClick={() => handleRemoveTag(tag)} className="ml-1 hover:text-red-200">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 ))}
               </div>
             )}
-            {fieldErrors.wantTags && (
-              <p className="text-sm text-red-500">{fieldErrors.wantTags}</p>
-            )}
           </Field>
         </FieldGroup>
 
-        <div className="fixed bottom-16 left-0 right-0 border-t border-[#F5DCC8] bg-white p-4 z-40">
+        {error && (
+          <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>
+        )}
+
+        <div className="fixed bottom-0 left-0 right-0 border-t border-[#F5DCC8] bg-white p-4">
           <Button
             type="submit"
             disabled={isPending}
             className="w-full bg-gradient-to-r from-[#E8A87C] to-[#FFB7C5] text-white hover:opacity-90"
           >
-            {isPending ? "게시 중..." : "게시하기"}
+            {isPending ? "수정 중..." : "수정 완료"}
           </Button>
         </div>
       </form>

@@ -8,7 +8,6 @@ import useEmblaCarousel from "embla-carousel-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -181,7 +180,7 @@ export default function PostDetailPage() {
   const isAuthor = currentUserId === post.author_id;
 
   return (
-    <div className="min-h-screen bg-[#FFF8F0] pb-24">
+    <div className="min-h-screen bg-[#FFF8F0] pb-40">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-[#F5DCC8] bg-white/80 backdrop-blur-sm">
         <div className="flex items-center justify-between px-4 py-3">
@@ -258,23 +257,18 @@ export default function PostDetailPage() {
       <ImageGallery images={post.post_images} title={post.title} />
 
       <div className="p-4">
-        {/* Author Info */}
-        <Card className="mb-4 border-[#F5DCC8] bg-white">
-          <CardContent className="flex items-center gap-3 p-4">
-            <Avatar className="h-12 w-12 border-2 border-[#FFB7C5]">
+        {/* Post Info */}
+        <div className="mb-4">
+          {/* Author */}
+          <div className="mb-3 flex items-center gap-2">
+            <Avatar className="h-7 w-7 border border-[#FFB7C5]">
               <AvatarImage src={post.profiles?.avatar_url ?? undefined} />
-              <AvatarFallback className="bg-[#FFB7C5] text-white">
+              <AvatarFallback className="bg-[#FFB7C5] text-xs text-white">
                 {(post.profiles?.nickname ?? "?")[0]}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <h3 className="font-medium text-[#5D4037]">{post.profiles?.nickname ?? "알 수 없음"}</h3>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Post Info */}
-        <div className="mb-4">
+            <span className="text-sm text-[#8D6E63]">{post.profiles?.nickname ?? "알 수 없음"}</span>
+          </div>
           <div className="mb-2 flex items-center gap-2">
             <Badge className="bg-[#E8A87C] text-white">{post.category}</Badge>
             <Badge
@@ -310,17 +304,15 @@ export default function PostDetailPage() {
         )}
 
         {/* Chat Status */}
-        <Card className="border-[#F5DCC8] bg-[#FFF0E5]">
-          <CardContent className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-2">
-              <MessageCircle className="h-5 w-5 text-[#E8A87C]" />
-              <span className="text-[#5D4037]">{"채팅 현황"}</span>
-            </div>
-            <span className="font-bold text-[#E8A87C]">
-              {`${post.chat_count} / ${post.max_chat}`}
-            </span>
-          </CardContent>
-        </Card>
+        <div className="flex items-center justify-between rounded-xl border border-[#F5DCC8] bg-[#FFF0E5] px-4 py-3">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="h-5 w-5 text-[#E8A87C]" />
+            <span className="text-[#5D4037]">{"채팅 현황"}</span>
+          </div>
+          <span className="font-bold text-[#E8A87C]">
+            {`${post.chat_count} / ${post.max_chat}`}
+          </span>
+        </div>
       </div>
 
       {/* Bottom Actions */}

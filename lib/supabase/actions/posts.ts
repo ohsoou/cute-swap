@@ -315,6 +315,17 @@ export async function updatePost(
   if (currentImages) {
     const toDelete = currentImages.filter((img) => !keepImageUrls.includes(img.url))
     if (toDelete.length > 0) {
+      // Delete from Storage
+      const storagePaths = toDelete
+        .map((img) => {
+          const marker = 'post-images/'
+          const idx = img.url.indexOf(marker)
+          return idx !== -1 ? img.url.slice(idx + marker.length) : null
+        })
+        .filter(Boolean) as string[]
+      if (storagePaths.length > 0) {
+        await supabase.storage.from('post-images').remove(storagePaths)
+      }
       await supabase
         .from('post_images')
         .delete()
@@ -362,6 +373,25 @@ export async function deletePost(
     return { error: '삭제 권한이 없습니다.' }
   }
 
+  // Delete images from Storage before deleting the post
+  const { data: images } = await supabase
+    .from('post_images')
+    .select('url')
+    .eq('post_id', Number(id))
+
+  if (images && images.length > 0) {
+    const storagePaths = images
+      .map((img) => {
+        const marker = 'post-images/'
+        const idx = img.url.indexOf(marker)
+        return idx !== -1 ? img.url.slice(idx + marker.length) : null
+      })
+      .filter(Boolean) as string[]
+    if (storagePaths.length > 0) {
+      await supabase.storage.from('post-images').remove(storagePaths)
+    }
+  }
+
   const { error } = await supabase
     .from('item_posts')
     .delete()
@@ -370,7 +400,7 @@ export async function deletePost(
   if (error) return { error: error.message }
 
   revalidatePath('/posts')
-  redirect('/posts')
+  redirect('/mypage')
 }
 
 export type PopularTag = { name: string; count: number }
